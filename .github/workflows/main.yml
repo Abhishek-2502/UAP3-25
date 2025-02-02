@@ -8,9 +8,25 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout
+    - name: Checkout code
       uses: actions/checkout@v1
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'  # Specify your desired Python version
+
+    - name: Install dependencies from RealTimeVirtualAssistant folder
+      run: |
+        cd RealTimeVirtualAssitant  # Change to the correct folder
+        python -m pip install --upgrade pip
+        pip install .  # Install the package
+
+    - name: Run realtime_va command
+      run: |
+        realtime_va  # Assuming this command needs to run in the context of the installed package
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
