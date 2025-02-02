@@ -1,0 +1,66 @@
+timeout(time: 1, unit: 'HOURS') {
+node('PYTHON-UTILITY-3.11') {
+    
+    // Only keep the 15 most recent builds and artifacts.
+    properties([
+      disableConcurrentBuilds(),
+      buildDiscarder(logRotator(daysToKeepStr: '5', numToKeepStr: '15'))
+    ])
+
+       try {
+            cleanWs deleteDirs: true, notFailBuild: true
+            checkout()
+
+            boolean isPrBuild = isPrBuild()
+            println "Pull request build: ${isPrBuild}"
+
+            if (isPrBuild) {
+                stage("Run Pylint") {
+                    sh "env && pwd && ls -lt"
+                    sh """
+                        cd RealTimeVirtualAssistant/ && env && pwd && ls -lt
+                        pylint . --output-format=parseable > pylint_report.txt || true
+                        cat pylint_report.txt
+                    """
+                }
+                
+                   stage("Archive Pylint Report") {
+                    sh "mv RealTimeVirtualAssistant/pylint_report.txt ./pylint_report.txt"  // Move to root
+                        archiveArtifacts artifacts: 'pylint_report.txt', fingerprint: true
+                }
+                
+                stage("Pylint Score Validation") {
+                    script {
+                        def pylint_score = sh(script: """
+                            tail -n 2 pylint_report.txt | awk '{print \$7}' | sed 's#/10##'
+                        """, returnStdout: true).trim()
+
+                        println "Pylint Score: ${pylint_score}"
+
+                        if (pylint_score.toFloat() < 7.5) {  // Set threshold (e.g., 8/10)
+                            error("❌ Pylint score too low: ${pylint_score}")
+                        }
+                    }
+                }
+                
+            }
+       } finally {
+           cleanWs deleteDirs: true, notFailBuild: true
+       }
+   }
+}
+
+def checkout() {
+    stage('Github checkout') {
+        checkout([
+            $class: 'GitSCM',
+            branches: scm.branches,
+            extensions: scm.extensions + [[$class: 'AuthorInChangelog']],
+           userRemoteConfigs: [[credentialsId: '12ea68b3-340a-4a03-834c-56e5635dac3a', url: 'ssh://git@github.bmc.com/DWP/UAP3-25.git']]
+         ])
+    }
+}
+
+boolean isPrBuild() {
+    return "${BRANCH_NAME}".startsWith("PR-")
+}

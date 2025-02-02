@@ -1,0 +1,10 @@
+fastapi==0.115.7
+uvicorn==0.34.0
+pytesseract==0.3.13
+opencv-python==4.11.0.86
+groq==0.15.0
+transformers==4.48.1
+torch==2.5.1
+pyfiglet==1.0.2
+python-multipart==0.0.20
+colorama==0.4.6
